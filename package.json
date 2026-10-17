@@ -7,14 +7,6 @@
   "engines": {
     "node": ">=22"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
-      "esbuild",
-      "prisma"
-    ]
-  },
   "scripts": {
     "build": "pnpm build:frontend && pnpm build:api && pnpm build:canister",
     "build:api": "pnpm --filter @odin-app/api build",
