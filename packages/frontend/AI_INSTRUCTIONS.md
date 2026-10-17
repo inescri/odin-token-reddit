@@ -5,65 +5,46 @@ Rules for working inside the frontend package. Read alongside the root
 
 ## What this package is
 
-A Vite + React + TypeScript app — the reference UI for an Odin Fun app: log in
-with Odin Connect, show the user's principal and internal balances, and drive
-the deposit/withdraw flows against the canister.
+A Vite + React + TypeScript app: the token-weighted message board UI. Users
+sign in with Odin Connect; the app exchanges the delegation for a backend
+session; votes carry the user's Odin balance read through the SDK.
 
 ```
 src/
-  main.tsx      # React entry
-  App.tsx       # root component
-index.html      # Vite html entry
-vite.config.ts  # build config (outDir: dist → served by the asset canister)
+  main.tsx · App.tsx         # entry, router (/, /b/:tokenId, /b/:tokenId/t/:threadId)
+  config.ts                  # APP_CANISTER_ID, API_URL from Vite env
+  odin/                      # Odin Connect wiring (one instance, render from state)
+  session/ · hooks/useSession.ts   # app session: login after connect, clear on disconnect
+  api/                       # apiFetch + wire types + login exchange
+  hooks/                     # data hooks (threads, comments, votes, boards, balance, token, profile)
+  context/TokenMetaContext   # token id/ticker/divisibility/decimals for VoteControl
+  components/ · routes/      # UI
+  lib/                       # pure helpers (amounts, commentTree, time, tokenImage) with tests
+  i18n/                      # en + zh; key sets must match (typecheck enforces)
 ```
-
-Stack: React 19, Vite 8, TypeScript strict. Built output (`dist/`) is what the
-dfx `frontend` asset canister serves.
-
-## What you MAY change freely
-
-- Components, hooks, layout, styling, copy, routing
-- Adding UI state, forms, validation, loading/error handling
-- Frontend dependencies (keep the bundle reasonable)
 
 ## Hard rules
 
-1. **Never trust the client for accounting.** The canister is the source of
-   truth for balances. The UI displays and requests; it must not assume a
-   transfer succeeded until the canister confirms. Show pending/failed states.
-2. **Amounts are `bigint`.** Token amounts use ICRC-1 `Nat`; keep them `bigint`
-   end-to-end and only format to a display string at the render edge. Do not do
-   balance math in `number` (precision loss).
-3. **Do not hardcode secrets or canister IDs.** Read canister IDs from the
-   generated env (dfx writes `.env`) / declarations, not string literals.
-4. **Keep types honest.** Strict mode is on; do not add `any` or `// @ts-ignore`
-   to silence real type errors from canister bindings.
-
-## Conventions
-
-- Function components + hooks. No class components.
-- 2-space indentation, single quotes, semicolons — match existing files.
-- Keep `App.tsx` thin; extract flows (auth, deposit, withdraw) into their own
-  components/hooks as they grow.
-- Prefer the `odin-connect` SDK for auth and canister actor wiring over rolling
-  your own agent setup.
-- **odin-connect 2.x: render from state, never from an awaited call.** Use the
-  single instance in `src/odin/client.ts` (never `new OdinConnect` elsewhere)
-  and `useOdinState()` / `useOdinConnect()`. Start `connect()` and
-  `user.<action>()` from handlers without awaiting them; put the follow-up in
-  an effect keyed on `request.action` + `request.status` (+ a `returnState`
-  tag), reading arguments from `request.input` / `returnState`. Value-moving
-  follow-ups run at most once per `request.id` (`claimRequest`). Never call
-  `connect()` automatically on a `rejected` / `unverified` request. Keep the
-  default `mode: "auto"` so wallet in-app browsers work. See the root README's
-  "Odin Connect in the frontend" and the SDK's `MIGRATION-2.0.md`.
+1. **Amounts are `bigint`** until the render edge; format with `lib/amounts.ts`
+   using `divisibility + decimals` from the token.
+2. **All Odin data goes through `odin.api.*`** (tokens, profiles, balances). No
+   hand-rolled calls to `api.odin.fun`.
+3. **Vote weight = `odin.api.getBalance(principal, tokenId)` fetched
+   immediately before `POST /votes`.** Never cache it across votes. A `null`
+   or zero balance means: do not submit (unless retracting), explain why.
+4. **odin-connect 2.x: render from state, never from an awaited call.** One
+   `OdinConnect` instance (`src/odin/client.ts`); start `connect()` from a
+   handler without awaiting; keep `mode: "auto"` for wallet in-app browsers.
+5. **Backend calls use the app session token** from `useSession()`, never the
+   Odin JWT. On a 401 call `invalidate()` and retry once.
+6. **No secrets or canister ids in code.** Read from Vite env.
+7. **Strict TS, no `any`, 2-space, single quotes, semicolons.**
 
 ## Build & test
 
 ```sh
-pnpm --filter @odin-app/frontend dev      # local dev server
-pnpm --filter @odin-app/frontend build    # tsc -b && vite build → dist/
+pnpm --filter @odin-app/frontend dev
 pnpm --filter @odin-app/frontend typecheck
+pnpm --filter @odin-app/frontend test
+pnpm --filter @odin-app/frontend build
 ```
-
-Keep `pnpm build:frontend` and `pnpm typecheck` green — CI runs both.

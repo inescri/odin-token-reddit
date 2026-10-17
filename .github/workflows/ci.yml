@@ -8,6 +8,22 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: odin
+          MYSQL_DATABASE: odin_board_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -podin"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: mysql://root:odin@127.0.0.1:3306/odin_board_test
+      TEST_DATABASE_URL: mysql://root:odin@127.0.0.1:3306/odin_board_test
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +53,11 @@ jobs:
       - name: Install Azle dfx extension
         run: pnpm --filter @odin-app/canister exec azle extension install
 
+      - name: Prisma generate + migrate (test DB)
+        run: |
+          pnpm --filter @odin-app/api prisma:generate
+          pnpm --filter @odin-app/api prisma:deploy
+
       - name: Type-check
         run: pnpm typecheck
 
@@ -45,6 +66,9 @@ jobs:
 
       - name: Build frontend
         run: pnpm build:frontend
+
+      - name: Build API
+        run: pnpm build:api
 
       - name: Build canister
         run: dfx build canister --check

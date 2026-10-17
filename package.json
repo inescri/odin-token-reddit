@@ -1,21 +1,32 @@
 {
-  "name": "odin-app-template",
+  "name": "odin-token-reddit",
   "version": "0.0.0",
   "private": true,
-  "description": "Reference canister app template for building on Odin Fun",
+  "description": "Token-weighted message board for Odin Fun tokens",
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
   },
   "scripts": {
-    "build": "pnpm build:frontend && pnpm build:canister",
+    "build": "pnpm build:frontend && pnpm build:api && pnpm build:canister",
+    "build:api": "pnpm --filter @odin-app/api build",
     "build:canister": "dfx build canister --check",
     "build:frontend": "pnpm --filter @odin-app/frontend build",
+    "dev:api": "pnpm --filter @odin-app/api dev",
     "dev:frontend": "pnpm --filter @odin-app/frontend dev",
+    "prisma:generate": "pnpm --filter @odin-app/api prisma:generate",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@noble/hashes": "^1.8.0"
   }
 }

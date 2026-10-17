@@ -1,8 +1,8 @@
 {
     "app": {
-        "title": "odin-app-template",
-        "intro": "用于在 Odin Fun 上开发的参考 canister 应用。已通过 Odin Connect 接入身份认证——充值/提现流程和多代币账本界面将在后续子任务中实现。",
-        "connectPrompt": "使用 Odin 连接以充值、提现并查看您的余额。"
+        "title": "Odin 代币看板",
+        "intro": "每个 Odin 代币一个留言板。您的投票权重与您持有的代币数量成正比——资产永远不会离开您的钱包。",
+        "connectPrompt": "使用 Odin 连接以发帖和投票。"
     },
     "auth": {
         "restoring": "正在恢复会话…",
@@ -16,55 +16,113 @@
         "en": "EN",
         "zh": "中文"
     },
-    "deposit": {
-        "heading": "充值",
-        "selectToken": "选择代币…",
-        "amountPlaceholder": "金额",
-        "submit": "充值",
-        "awaitingApproval": "正在等待授权…",
-        "crediting": "正在入账…",
-        "credited": "充值已入账。",
-        "balancesHeading": "内部余额",
-        "noBalances": "暂无内部余额。",
-        "note": "注意：<0>deposit</0> 通过 <1>icrc2_transfer_from</1> 拉取已授权的资金，并在一次调用中为您的余额入账——该入账由 canister 实际转移的代币支持，因此无需可信的铸币方。",
-        "errors": {
-            "loadTokens": "加载代币失败：{{message}}",
-            "approvalFailed": "授权失败：{{message}}",
-            "depositFailed": "充值失败：{{message}}"
-        }
-    },
-    "withdraw": {
-        "heading": "提现",
-        "selectToken": "选择代币…",
-        "amountPlaceholder": "金额",
-        "max": "最大",
-        "submit": "提现",
-        "awaitingApproval": "正在等待 BTC 授权…",
-        "withdrawing": "正在提现…",
-        "sent": "提现已发送。",
-        "feeNote": "网络手续费：约 {{sats}} 聪（以 BTC 计）。您在提现时授权 BTC，以便 canister 支付 Odin 账本的转账手续费——无需 canister 预存资金。",
-        "noBalances": "没有可提现的内部余额。请先充值一些代币。",
-        "errors": {
-            "feeApprovalFailed": "BTC 手续费授权失败：{{message}}",
-            "feeApprovalRejected": "BTC 手续费授权已取消或被拒绝。",
-            "withdrawFailed": "提现失败：{{message}}"
-        }
-    },
     "errors": {
-        "noCanisterConfigured": "未配置应用 canister（请设置 VITE_APP_CANISTER_ID）。",
-        "notConnected": "未连接。",
-        "selectTokenDeposit": "请选择要充值的代币。",
-        "selectTokenWithdraw": "请选择要提现的代币。",
-        "invalidAmount": "金额无效。",
-        "amountGreaterThanZero": "金额必须大于零。",
-        "approvalRejected": "授权已取消或被拒绝。",
-        "canisterUnavailableDeposit": "canister 不可用——请重新连接以启用充值。",
-        "canisterUnavailableWithdraw": "canister 不可用——请重新连接以启用提现。",
-        "tokenInfoLoading": "代币信息仍在加载——请稍后重试。",
-        "insufficientBalance": "内部余额不足。",
         "unexpected": "发生意外错误",
         "connectFailed": "连接 Odin 失败",
         "connectRejected": "已在 Odin 中取消或拒绝登录。",
         "connectUnverified": "无法验证登录，请重试。"
+    },
+    "session": {
+        "error": "无法登录看板：{{message}}",
+        "retry": "重试"
+    },
+    "vote": {
+        "up": "赞成",
+        "down": "反对",
+        "scoreTitle": "代币加权得分",
+        "rawTitle": "原始票数：赞成 / 反对",
+        "signIn": "登录后投票",
+        "noBalance": "需要持有 {{ticker}} 才能在此投票。",
+        "balanceUnavailable": "无法读取您的余额，请重试。",
+        "deleted": "该内容已被删除。",
+        "session": "看板会话尚未就绪，请稍后重试。",
+        "failed": "投票失败：{{message}}",
+        "applied": "已按 {{amount}} {{ticker}} 计入"
+    },
+    "composer": {
+        "signInThread": "使用 Odin 连接以发起主题。",
+        "signInComment": "使用 Odin 连接以回复。",
+        "titlePlaceholder": "标题",
+        "bodyPlaceholder": "正文（可选）",
+        "commentPlaceholder": "写下回复…",
+        "cancel": "取消",
+        "submitting": "发布中…",
+        "postThread": "发布主题",
+        "postComment": "评论",
+        "cooldown": "请放慢速度：{{message}}",
+        "failed": "发布失败：{{message}}"
+    },
+    "thread": {
+        "deletedTitle": "[已删除]",
+        "edited": "已编辑",
+        "comments_one": "{{count}} 条评论",
+        "comments_other": "{{count}} 条评论",
+        "notFound": "未找到该主题",
+        "backToBoard": "返回看板",
+        "loadError": "无法加载主题：{{message}}",
+        "loading": "正在加载主题…",
+        "confirmDelete": "删除此主题？其回复仍将可见。",
+        "home": "看板",
+        "save": "保存",
+        "edit": "编辑",
+        "delete": "删除",
+        "sortLabel": "评论排序",
+        "sort": {
+            "top": "热门",
+            "new": "最新"
+        },
+        "deletedNoReplies": "该主题已删除，不再接受新回复。",
+        "commentsError": "无法加载评论：{{message}}",
+        "loadingComments": "正在加载评论…",
+        "noComments": "暂无评论。"
+    },
+    "comment": {
+        "edited": "已编辑",
+        "deleted": "[已删除]",
+        "reply": "回复",
+        "edit": "编辑",
+        "delete": "删除",
+        "save": "保存",
+        "confirmDelete": "删除此评论？对它的回复仍将可见。"
+    },
+    "power": {
+        "label": "您的投票权重",
+        "approximate": "近似值：Odin API 当前报告的余额。每次投票使用投票时刻的余额。",
+        "loading": "…",
+        "unavailable": "不可用",
+        "zero": "0 —— 持有 {{ticker}} 才能在此看板投票",
+        "value": "≈ {{amount}} {{ticker}}",
+        "refresh": "刷新"
+    },
+    "home": {
+        "searchPlaceholder": "按名称或代码搜索代币",
+        "loadError": "无法加载代币：{{message}}",
+        "loading": "正在加载代币…",
+        "empty": "没有匹配的代币。",
+        "holders_one": "{{count}} 位持有者",
+        "holders_other": "{{count}} 位持有者",
+        "threads_one": "{{count}} 个主题",
+        "threads_other": "{{count}} 个主题"
+    },
+    "board": {
+        "tokenError": "无法加载该代币：{{message}}",
+        "backHome": "返回看板列表",
+        "loadingToken": "加载中…",
+        "threadCount_one": "{{count}} 个主题",
+        "threadCount_other": "{{count}} 个主题",
+        "sortLabel": "主题排序",
+        "sort": {
+            "hot": "热度",
+            "top": "最高",
+            "new": "最新"
+        },
+        "loadError": "无法加载主题：{{message}}",
+        "loading": "正在加载主题…",
+        "empty": "暂无主题。来发第一个吧。"
+    },
+    "pager": {
+        "prev": "上一页",
+        "next": "下一页",
+        "of": "第 {{page}} / {{pages}} 页"
     }
 }

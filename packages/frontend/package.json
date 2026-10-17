@@ -19,7 +19,8 @@
     "odin-connect": "^2.0.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-i18next": "^17.0.8"
+    "react-i18next": "^17.0.8",
+    "react-router-dom": "^7.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

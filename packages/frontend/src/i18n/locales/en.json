@@ -1,8 +1,8 @@
 {
     "app": {
-        "title": "odin-app-template",
-        "intro": "Reference canister app for building on Odin Fun. Auth is wired up with Odin Connect — deposit/withdraw flows and the multi-token ledger UI land in later subtasks.",
-        "connectPrompt": "Connect with Odin to deposit, withdraw and view your balances."
+        "title": "Odin Token Board",
+        "intro": "A message board for every Odin token. Your vote counts in proportion to how much of the token you hold — nothing ever leaves your wallet.",
+        "connectPrompt": "Connect with Odin to post and vote."
     },
     "auth": {
         "restoring": "Restoring session…",
@@ -16,55 +16,113 @@
         "en": "EN",
         "zh": "中文"
     },
-    "deposit": {
-        "heading": "Deposit",
-        "selectToken": "Select token…",
-        "amountPlaceholder": "Amount",
-        "submit": "Deposit",
-        "awaitingApproval": "Awaiting approval…",
-        "crediting": "Crediting…",
-        "credited": "Deposit credited.",
-        "balancesHeading": "Internal balances",
-        "noBalances": "No internal balances yet.",
-        "note": "Note: <0>deposit</0> pulls the approved funds via <1>icrc2_transfer_from</1> and credits your balance in one call — the credit is backed by tokens the canister actually moved, so no trusted minter is required.",
-        "errors": {
-            "loadTokens": "Failed to load tokens: {{message}}",
-            "approvalFailed": "Approval failed: {{message}}",
-            "depositFailed": "Deposit failed: {{message}}"
-        }
-    },
-    "withdraw": {
-        "heading": "Withdraw",
-        "selectToken": "Select token…",
-        "amountPlaceholder": "Amount",
-        "max": "Max",
-        "submit": "Withdraw",
-        "awaitingApproval": "Awaiting BTC approval…",
-        "withdrawing": "Withdrawing…",
-        "sent": "Withdrawal sent.",
-        "feeNote": "Network fee: ~{{sats}} sats in BTC. You approve BTC on withdraw so the canister can cover the Odin ledger transfer fee — no canister float needed.",
-        "noBalances": "No internal balances to withdraw. Deposit some tokens first.",
-        "errors": {
-            "feeApprovalFailed": "BTC fee approval failed: {{message}}",
-            "feeApprovalRejected": "BTC fee approval cancelled or rejected.",
-            "withdrawFailed": "Withdraw failed: {{message}}"
-        }
-    },
     "errors": {
-        "noCanisterConfigured": "No app canister configured (set VITE_APP_CANISTER_ID).",
-        "notConnected": "Not connected.",
-        "selectTokenDeposit": "Select a token to deposit.",
-        "selectTokenWithdraw": "Select a token to withdraw.",
-        "invalidAmount": "Invalid amount.",
-        "amountGreaterThanZero": "Amount must be greater than zero.",
-        "approvalRejected": "Approval cancelled or rejected.",
-        "canisterUnavailableDeposit": "Canister unavailable — reconnect to enable deposits.",
-        "canisterUnavailableWithdraw": "Canister unavailable — reconnect to enable withdrawals.",
-        "tokenInfoLoading": "Token info still loading — try again in a moment.",
-        "insufficientBalance": "Insufficient internal balance.",
         "unexpected": "Unexpected error",
         "connectFailed": "Failed to connect to Odin",
         "connectRejected": "Sign-in was cancelled or rejected in Odin.",
         "connectUnverified": "Could not verify the sign-in. Please try again."
+    },
+    "session": {
+        "error": "Could not sign in to the board: {{message}}",
+        "retry": "Retry"
+    },
+    "vote": {
+        "up": "Upvote",
+        "down": "Downvote",
+        "scoreTitle": "Token-weighted score",
+        "rawTitle": "Raw votes: up / down",
+        "signIn": "Sign in to vote",
+        "noBalance": "You need to hold {{ticker}} to vote here.",
+        "balanceUnavailable": "Could not read your balance. Try again.",
+        "deleted": "This item was deleted.",
+        "session": "Board session not ready. Try again in a moment.",
+        "failed": "Vote failed: {{message}}",
+        "applied": "Counted with {{amount}} {{ticker}}"
+    },
+    "composer": {
+        "signInThread": "Connect with Odin to start a thread.",
+        "signInComment": "Connect with Odin to reply.",
+        "titlePlaceholder": "Title",
+        "bodyPlaceholder": "Text (optional)",
+        "commentPlaceholder": "Write a reply…",
+        "cancel": "Cancel",
+        "submitting": "Posting…",
+        "postThread": "Post thread",
+        "postComment": "Comment",
+        "cooldown": "Slow down: {{message}}",
+        "failed": "Could not post: {{message}}"
+    },
+    "thread": {
+        "deletedTitle": "[deleted]",
+        "edited": "edited",
+        "comments_one": "{{count}} comment",
+        "comments_other": "{{count}} comments",
+        "notFound": "Thread not found",
+        "backToBoard": "Back to the board",
+        "loadError": "Could not load thread: {{message}}",
+        "loading": "Loading thread…",
+        "confirmDelete": "Delete this thread? Its replies stay visible.",
+        "home": "Boards",
+        "save": "Save",
+        "edit": "Edit",
+        "delete": "Delete",
+        "sortLabel": "Sort comments",
+        "sort": {
+            "top": "Top",
+            "new": "New"
+        },
+        "deletedNoReplies": "This thread was deleted. New replies are closed.",
+        "commentsError": "Could not load comments: {{message}}",
+        "loadingComments": "Loading comments…",
+        "noComments": "No comments yet."
+    },
+    "comment": {
+        "edited": "edited",
+        "deleted": "[deleted]",
+        "reply": "Reply",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "confirmDelete": "Delete this comment? Replies to it stay visible."
+    },
+    "power": {
+        "label": "Your voting power",
+        "approximate": "Approximate: the balance the Odin API reports right now. Each vote uses the balance at the moment you vote.",
+        "loading": "…",
+        "unavailable": "unavailable",
+        "zero": "0 — hold {{ticker}} to vote on this board",
+        "value": "≈ {{amount}} {{ticker}}",
+        "refresh": "Refresh"
+    },
+    "home": {
+        "searchPlaceholder": "Search tokens by name or ticker",
+        "loadError": "Could not load tokens: {{message}}",
+        "loading": "Loading tokens…",
+        "empty": "No tokens match.",
+        "holders_one": "{{count}} holder",
+        "holders_other": "{{count}} holders",
+        "threads_one": "{{count}} thread",
+        "threads_other": "{{count}} threads"
+    },
+    "board": {
+        "tokenError": "Could not load this token: {{message}}",
+        "backHome": "Back to boards",
+        "loadingToken": "Loading…",
+        "threadCount_one": "{{count}} thread",
+        "threadCount_other": "{{count}} threads",
+        "sortLabel": "Sort threads",
+        "sort": {
+            "hot": "Hot",
+            "top": "Top",
+            "new": "New"
+        },
+        "loadError": "Could not load threads: {{message}}",
+        "loading": "Loading threads…",
+        "empty": "No threads yet. Start the first one."
+    },
+    "pager": {
+        "prev": "Previous",
+        "next": "Next",
+        "of": "Page {{page}} of {{pages}}"
     }
 }
