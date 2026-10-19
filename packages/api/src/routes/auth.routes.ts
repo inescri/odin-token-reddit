@@ -31,10 +31,10 @@ export function authRouter(deps: AuthRouterDeps): Router {
 
   router.post('/auth/login', ...(limiter ? [limiter] : []), async (req, res) => {
     const body = loginBody.parse(req.body);
-    const principal = await verifyLogin(body, { appCanisterId: deps.appCanisterId });
-    // Only burn the signature once it proved valid, so a forged attempt cannot
-    // pre-poison a legitimate signature's hash.
-    deps.replayGuard.assertFresh(body.signature);
+    const { principal, replayKey } = await verifyLogin(body, { appCanisterId: deps.appCanisterId });
+    // Only burn the key once the login proved valid, so a forged attempt cannot
+    // pre-poison a legitimate login's key.
+    deps.replayGuard.assertFresh(replayKey);
     const session = await issueSession(principal, deps.sessionSecret);
     res.json({ token: session.token, principal, expiresAt: session.expiresAt.toISOString() });
   });

@@ -29,7 +29,8 @@ model Thread {
   editedAt     DateTime? @db.DateTime(3)
   deleted      Boolean   @default(false)
   /// Sum of up weights minus sum of down weights, raw token units. May be negative.
-  score        Decimal   @default(0) @db.Decimal(40, 0)
+  /// DECIMAL(65,0), wider than a single 40-digit weight, so no run of votes can overflow it.
+  score        Decimal   @default(0) @db.Decimal(65, 0)
   upCount      Int       @default(0) @db.UnsignedInt
   downCount    Int       @default(0) @db.UnsignedInt
   commentCount Int       @default(0) @db.UnsignedInt
@@ -49,7 +50,7 @@ model Comment {
   createdAt DateTime  @default(now()) @db.DateTime(3)
   editedAt  DateTime? @db.DateTime(3)
   deleted   Boolean   @default(false)
-  score     Decimal   @default(0) @db.Decimal(40, 0)
+  score     Decimal   @default(0) @db.Decimal(65, 0)
   upCount   Int       @default(0) @db.UnsignedInt
   downCount Int       @default(0) @db.UnsignedInt
 

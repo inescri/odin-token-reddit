@@ -2,7 +2,7 @@
 
 **Branch**: `001-token-message-board` | **Date**: 2026-10-17 (revised)
 
-Persistent state lives in MySQL 8 via Prisma. Amounts are `DECIMAL(40,0)` in the database, `bigint` in services, decimal strings on the wire. Principals are stored as text (≤ 63 chars). Times are `DATETIME(3)` UTC.
+Persistent state lives in MySQL 8 via Prisma. Amounts are `DECIMAL(40,0)` in the database (scores, which sum many weights, are `DECIMAL(65,0)`), `bigint` in services, decimal strings on the wire. Principals are stored as text (≤ 63 chars). Times are `DATETIME(3)` UTC.
 
 ## Prisma schema (authoritative sketch)
 
@@ -25,7 +25,7 @@ model Thread {
   createdAt    DateTime  @default(now()) @db.DateTime(3)
   editedAt     DateTime? @db.DateTime(3)
   deleted      Boolean   @default(false)
-  score        Decimal   @default(0) @db.Decimal(40, 0)
+  score        Decimal   @default(0) @db.Decimal(65, 0)
   upCount      Int       @default(0) @db.UnsignedInt
   downCount    Int       @default(0) @db.UnsignedInt
   commentCount Int       @default(0) @db.UnsignedInt
@@ -45,7 +45,7 @@ model Comment {
   createdAt DateTime  @default(now()) @db.DateTime(3)
   editedAt  DateTime? @db.DateTime(3)
   deleted   Boolean   @default(false)
-  score     Decimal   @default(0) @db.Decimal(40, 0)
+  score     Decimal   @default(0) @db.Decimal(65, 0)
   upCount   Int       @default(0) @db.UnsignedInt
   downCount Int       @default(0) @db.UnsignedInt
 

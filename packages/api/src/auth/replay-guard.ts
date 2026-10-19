@@ -5,9 +5,10 @@ import { AppError } from '../lib/errors.js';
 export const REPLAY_TTL_MS = 10 * 60 * 1000;
 
 /**
- * Remembers login signatures for `ttlMs` so the same signed payload cannot be
- * presented twice inside the timestamp window. In-memory: correct for a single
- * API instance. Move to MySQL or Redis before running several instances.
+ * Remembers login replay keys (see `VerifiedLogin.replayKey`) for `ttlMs` so
+ * the same signed login cannot be presented twice inside the timestamp window.
+ * In-memory: correct for a single API instance. Move to MySQL or Redis before
+ * running several instances.
  */
 export class ReplayGuard {
   private readonly seen = new Map<string, number>();
@@ -18,9 +19,9 @@ export class ReplayGuard {
     private readonly now: () => number = Date.now,
   ) {}
 
-  /** Throws `REPLAY` if this signature was accepted before; otherwise records it. */
-  assertFresh(signatureB64: string): void {
-    const key = createHash('sha256').update(signatureB64).digest('hex');
+  /** Throws `REPLAY` if this login was accepted before; otherwise records it. */
+  assertFresh(replayKey: string): void {
+    const key = createHash('sha256').update(replayKey).digest('hex');
     const t = this.now();
     const exp = this.seen.get(key);
     if (exp !== undefined && exp > t) {

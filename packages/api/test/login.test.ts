@@ -1,9 +1,12 @@
+import { DelegationChain, DelegationIdentity, Ed25519KeyIdentity } from '@dfinity/identity';
+import { Principal } from '@dfinity/principal';
 import { describe, expect, it } from 'vitest';
 
 import { LOGIN_SKEW_MS, verifyLogin } from '../src/auth/login.js';
 import { ReplayGuard } from '../src/auth/replay-guard.js';
 import type { AppError } from '../src/lib/errors.js';
 import { OTHER_CANISTER_ID, TEST_CANISTER_ID, makeUser, signLogin } from './helpers/odin-identity.js';
+import type { TestUser } from './helpers/odin-identity.js';
 
 const opts = { appCanisterId: TEST_CANISTER_ID };
 const codeOf = async (p: Promise<unknown>) => { try { await p; return 'none'; } catch (e) { return `${(e as AppError).code}:${(e as Error).message}`; } };
@@ -12,12 +15,40 @@ describe('verifyLogin', () => {
   it('accepts a valid delegation login and returns the root principal', async () => {
     const user = await makeUser();
     const body = await signLogin(user);
-    await expect(verifyLogin(body, opts)).resolves.toBe(user.principal);
+    await expect(verifyLogin(body, opts)).resolves.toMatchObject({ principal: user.principal });
   });
 
   it('rejects a delegation scoped to another app', async () => {
     const user = await makeUser({ targets: [OTHER_CANISTER_ID] });
     expect(await codeOf(verifyLogin(await signLogin(user), opts))).toMatch(/^LOGIN_REJECTED:.*scoped/);
+  });
+
+  it('rejects a hop scoped here appended to a delegation scoped to another app', async () => {
+    // Another Odin app holds the user's session key and extends the chain.
+    const user = await makeUser({ targets: [OTHER_CANISTER_ID] });
+    const appended = Ed25519KeyIdentity.generate();
+    const chain = await DelegationChain.create(user.session, appended.getPublicKey(), new Date(Date.now() + 60_000), {
+      targets: [Principal.fromText(TEST_CANISTER_ID)],
+      previous: user.chain,
+    });
+    const forged: TestUser = {
+      ...user,
+      session: appended,
+      chain,
+      identity: DelegationIdentity.fromDelegation(appended, chain),
+      delegationJson: JSON.stringify(chain.toJSON()),
+    };
+    expect(await codeOf(verifyLogin(await signLogin(forged), opts))).toMatch(/^LOGIN_REJECTED:.*scoped/);
+  });
+
+  it('gives a re-encoded signature the same replay key', async () => {
+    const user = await makeUser();
+    const body = await signLogin(user);
+    const reencoded = { ...body, signature: body.signature.replace(/=+$/, '') };
+    expect(reencoded.signature).not.toBe(body.signature);
+    const a = await verifyLogin(body, opts);
+    const b = await verifyLogin(reencoded, opts);
+    expect(b.replayKey).toBe(a.replayKey);
   });
 
   it('rejects a stale timestamp', async () => {

@@ -31,6 +31,12 @@ export interface LoginOptions {
   now?: () => number;
 }
 
+export interface VerifiedLogin {
+  principal: string;
+  /** Pass to `ReplayGuard.assertFresh` so one signed login is accepted once. */
+  replayKey: string;
+}
+
 export function buildLoginMessage(timestamp: string): Uint8Array {
   return new TextEncoder().encode(`${LOGIN_MESSAGE_PREFIX}${timestamp}`);
 }
@@ -47,7 +53,7 @@ function reject(reason: string): never {
  * the session-key signature over the app-bound message. Adds a target check so
  * a delegation issued to another Odin app cannot be replayed here.
  */
-export async function verifyLogin(input: LoginInput, opts: LoginOptions): Promise<string> {
+export async function verifyLogin(input: LoginInput, opts: LoginOptions): Promise<VerifiedLogin> {
   const now = opts.now ? opts.now() : Date.now();
 
   if (!/^[0-9]{1,16}$/.test(input.timestamp)) reject('timestamp must be epoch milliseconds');
@@ -65,9 +71,13 @@ export async function verifyLogin(input: LoginInput, opts: LoginOptions): Promis
   if (!OdinUtils.isDelegationValid(input.delegation)) reject('delegation chain has expired');
 
   const last = chain.delegations[chain.delegations.length - 1]!.delegation;
-  const targets = last.targets ?? [];
-  const appTarget = Principal.fromText(opts.appCanisterId);
-  if (!targets.some((t) => t.toText() === appTarget.toText())) {
+  // Each hop that sets `targets` narrows the chain (the IC intersects them), so
+  // every scoped hop must name this app. Checking only the last hop would let a
+  // session key held by another Odin app append a hop scoped here. A chain with
+  // no targets at all is unscoped and rejected too.
+  const appTarget = Principal.fromText(opts.appCanisterId).toText();
+  const scoped = chain.delegations.map((d) => d.delegation.targets).filter((t) => t !== undefined);
+  if (scoped.length === 0 || !scoped.every((targets) => targets.some((t) => t.toText() === appTarget))) {
     reject('delegation is not scoped to this app');
   }
 
@@ -99,5 +109,11 @@ export async function verifyLogin(input: LoginInput, opts: LoginOptions): Promis
   }
   if (!sigOk) reject('invalid signature');
 
-  return Principal.selfAuthenticating(new Uint8Array(chain.publicKey)).toText();
+  return {
+    principal: Principal.selfAuthenticating(new Uint8Array(chain.publicKey)).toText(),
+    // What the signature commits to: one session key signing one timestamp.
+    // Not the signature bytes or their base64, which re-encoding (padding,
+    // base64url) or ECDSA malleability can change without a new signing.
+    replayKey: `${Buffer.from(new Uint8Array(last.pubkey)).toString('hex')}:${input.timestamp}`,
+  };
 }

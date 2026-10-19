@@ -63,6 +63,14 @@ describe.skipIf(!hasDatabase)('votes (MySQL)', () => {
     expect((await vote(bob, 'up', '7', 'comment', c.body.id)).body.error.code).toBe('DELETED');
   });
 
+  it('a maximum-size weight does not lock the score column', async () => {
+    const max = '9'.repeat(40);
+    expect((await vote(alice, 'up', max)).body).toMatchObject({ score: max });
+    const res = await vote(bob, 'up', max);
+    expect(res.status).toBe(200);
+    expect(res.body.score).toBe((2n * BigInt(max)).toString());
+  });
+
   it('deleted targets refuse new votes and flips but allow retracts', async () => {
     await vote(alice, 'up', '40');
     await vote(bob, 'down', '15');

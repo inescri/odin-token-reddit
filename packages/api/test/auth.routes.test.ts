@@ -28,6 +28,11 @@ describe('auth routes', () => {
     const again = await request(app).post('/auth/login').send(body);
     expect(again.status).toBe(409);
     expect(again.body.error.code).toBe('REPLAY');
+
+    // Same signature bytes in another base64 spelling is still a replay.
+    const unpadded = await request(app).post('/auth/login').send({ ...body, signature: body.signature.replace(/=+$/, '') });
+    expect(unpadded.status).toBe(409);
+    expect(unpadded.body.error.code).toBe('REPLAY');
   });
 
   it('bad bodies and bad signatures map to error codes', async () => {
