@@ -6,7 +6,7 @@ import { ui } from '../components/ui';
 import { BOARDS_PAGE_SIZE, useBoards } from '../hooks/useBoards';
 import { tokenImageUrl } from '../lib/tokenImage';
 
-export function HomePage() {
+export function HomePage(): React.JSX.Element {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const search = params.get('q') ?? '';

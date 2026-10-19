@@ -12,7 +12,7 @@ const styles: Record<string, React.CSSProperties> = {
   principal: { fontFamily: 'ui-monospace, monospace', fontSize: '0.8rem', opacity: 0.7, whiteSpace: 'nowrap' },
 };
 
-export function AuthorChip({ principal }: { principal: string }) {
+export function AuthorChip({ principal }: { principal: string }): React.JSX.Element {
   const profile = useUserProfile(principal);
   return (
     <span style={styles.chip} title={principal}>

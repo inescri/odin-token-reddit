@@ -21,7 +21,9 @@ export function commentOrderBy(sort: CommentSort): Prisma.CommentOrderByWithRela
 }
 
 /**
- * Hot = (score in display units) / (ageHours + 2)^1.5. Computed in SQL so the
+ * Hot = (score in display units) / (ageHours + 2)^1.5 for score ≥ 0, and
+ * score × (ageHours + 2)^1.5 for score < 0, so negative threads sink further
+ * with age instead of decaying up toward 0. Computed in SQL so the
  * whole board is ordered before pagination. Ordering only — never stored.
  * Returns the page of thread ids in rank order; the caller hydrates them.
  */
@@ -32,8 +34,11 @@ export function hotThreadIdsSql(tokenId: string, limit: number, offset: number):
     JOIN \`Board\` b ON b.tokenId = t.tokenId
     WHERE t.tokenId = ${tokenId}
       AND (t.deleted = 0 OR t.commentCount > 0)
-    ORDER BY (t.score / POW(10, b.decimals))
-             / POW(TIMESTAMPDIFF(SECOND, t.createdAt, NOW(3)) / 3600 + 2, 1.5) DESC,
+    ORDER BY CASE
+               WHEN t.score >= 0
+                 THEN (t.score / POW(10, b.decimals)) / POW(TIMESTAMPDIFF(SECOND, t.createdAt, NOW(3)) / 3600 + 2, 1.5)
+               ELSE (t.score / POW(10, b.decimals)) * POW(TIMESTAMPDIFF(SECOND, t.createdAt, NOW(3)) / 3600 + 2, 1.5)
+             END DESC,
              t.createdAt DESC
     LIMIT ${limit} OFFSET ${offset}
   `;

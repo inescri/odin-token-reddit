@@ -21,7 +21,7 @@ function parseSort(raw: string | null): ThreadSort {
   return raw === 'top' || raw === 'new' ? raw : 'hot';
 }
 
-export function BoardPage() {
+export function BoardPage(): React.JSX.Element | null {
   const { t } = useTranslation();
   const { tokenId } = useParams<{ tokenId: string }>();
   const [params, setParams] = useSearchParams();

@@ -60,7 +60,28 @@ describe.skipIf(!hasDatabase)('votes (MySQL)', () => {
     const c = await request(app).post(`/threads/${threadId}/comments`).set('Authorization', bob).send({ body: 'c' });
     expect((await vote(alice, 'up', '7', 'comment', c.body.id)).body).toMatchObject({ score: '7', upCount: 1 });
     await request(app).delete(`/comments/${c.body.id}`).set('Authorization', bob);
-    expect((await vote(alice, 'up', '7', 'comment', c.body.id)).body.error.code).toBe('DELETED');
+    expect((await vote(bob, 'up', '7', 'comment', c.body.id)).body.error.code).toBe('DELETED');
+  });
+
+  it('deleted targets refuse new votes and flips but allow retracts', async () => {
+    await vote(alice, 'up', '40');
+    await vote(bob, 'down', '15');
+    await request(app).delete(`/threads/${threadId}`).set('Authorization', alice);
+
+    expect((await vote(alice, 'down', '40')).body.error.code).toBe('DELETED');
+    const retract = await vote(alice, 'up', '0');
+    expect(retract.status).toBe(200);
+    expect(retract.body).toMatchObject({ score: '-15', upCount: 0, downCount: 1, myVote: null });
+    expect((await vote(alice, 'up', '40')).body.error.code).toBe('DELETED');
+  });
+
+  it('comments under a deleted thread refuse new votes', async () => {
+    const c = await request(app).post(`/threads/${threadId}/comments`).set('Authorization', bob).send({ body: 'c' });
+    await vote(alice, 'up', '5', 'comment', c.body.id);
+    await request(app).delete(`/threads/${threadId}`).set('Authorization', alice);
+
+    expect((await vote(bob, 'up', '5', 'comment', c.body.id)).body.error.code).toBe('DELETED');
+    expect((await vote(alice, 'up', '0', 'comment', c.body.id)).body).toMatchObject({ score: '0', myVote: null });
   });
 
   it('100 concurrent alternating toggles converge to ≤1 vote and consistent counters (SC-003)', async () => {

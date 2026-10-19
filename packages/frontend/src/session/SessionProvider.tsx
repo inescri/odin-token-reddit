@@ -27,7 +27,7 @@ export const SessionContext = createContext<SessionContextValue | null>(null);
  * the user is connected (reusing a stored, unexpired token when present) and
  * clears everything on disconnect.
  */
-export function SessionProvider({ children }: { children: ReactNode }) {
+export function SessionProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const { status: odinStatus, user, principal } = useOdinConnect();
   const [session, setSession] = useState<AppSession | null>(null);
   const [status, setStatus] = useState<SessionStatus>('none');

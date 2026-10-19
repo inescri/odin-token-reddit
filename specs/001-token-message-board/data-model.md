@@ -111,7 +111,7 @@ Transaction (`votes.service.ts`): `SELECT ... FOR UPDATE` on the target row → 
 
 - **Top**: `ORDER BY score DESC, createdAt DESC`
 - **New**: `ORDER BY createdAt DESC`
-- **Hot**: `ORDER BY (t.score / POW(10, b.decimals)) / POW(TIMESTAMPDIFF(SECOND, t.createdAt, NOW()) / 3600 + 2, 1.5) DESC, t.createdAt DESC` (raw SQL with `Board` joined)
+- **Hot**: `s = t.score / POW(10, b.decimals)`, `g = POW(TIMESTAMPDIFF(SECOND, t.createdAt, NOW()) / 3600 + 2, 1.5)`; `ORDER BY CASE WHEN s >= 0 THEN s / g ELSE s * g END DESC, t.createdAt DESC` (raw SQL with `Board` joined). Negative scores multiply by the age factor so old downvoted threads sink instead of decaying toward 0.
 
 Comments default to Top with the same expression minus the board join (decimals passed from the thread's board).
 

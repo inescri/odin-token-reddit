@@ -91,6 +91,26 @@ describe.skipIf(!hasDatabase)('threads & comments routes (MySQL)', () => {
     expect((await request(app).get('/boards/2jjj/threads')).body.total).toBe(1);
   });
 
+  it('concurrent posts from one principal pass the cooldown exactly once', async () => {
+    // The shared test app disables the cooldown; this one uses the real 30 s.
+    const cooled = testApp(prisma, { POST_COOLDOWN_MS: 30_000 });
+    const results = await Promise.all(Array.from({ length: 10 }, (_, i) =>
+      request(cooled).post('/boards/2jjj/threads').set('Authorization', alice).send({ title: `t${i}`, body: '', token: TOKEN })));
+    const statuses = results.map((r) => r.status).sort();
+    expect(statuses.filter((s) => s === 201)).toHaveLength(1);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(9);
+    expect(await prisma.thread.count({ where: { author: ALICE } })).toBe(1);
+  });
+
+  it('concurrent deletes of one comment decrement commentCount once', async () => {
+    const t = await createThread(alice);
+    const c = await request(app).post(`/threads/${t.body.id}/comments`).set('Authorization', bob).send({ body: 'c' });
+    const results = await Promise.all(Array.from({ length: 5 }, () => request(app).delete(`/comments/${c.body.id}`).set('Authorization', bob)));
+    for (const r of results) expect(r.status).toBe(204);
+    const thread = await prisma.thread.findUniqueOrThrow({ where: { id: BigInt(t.body.id) } });
+    expect(thread.commentCount).toBe(0);
+  });
+
   it('board stats count non-deleted threads and return zero for unknown boards', async () => {
     await createThread(alice);
     const res = await request(app).get('/boards/stats?tokenIds=2jjj,nope');

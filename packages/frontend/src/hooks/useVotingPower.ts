@@ -21,6 +21,13 @@ export function useVotingPower(tokenId: string | undefined): VotingPowerState {
 
   const refresh = useCallback(() => setTick((n) => n + 1), []);
 
+  // A new board or account must not show the previous balance, which would be
+  // formatted with the wrong token's decimals. Plain refreshes keep the value.
+  useEffect(() => {
+    setRaw(null);
+    setError(false);
+  }, [principal, tokenId]);
+
   useEffect(() => {
     if (status !== 'connected' || principal === null || !tokenId) {
       setRaw(null);

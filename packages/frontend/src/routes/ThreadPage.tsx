@@ -23,7 +23,7 @@ import { useOdinConnect } from '../odin/useOdinConnect';
 
 const SORTS: CommentSort[] = ['top', 'new'];
 
-export function ThreadPage() {
+export function ThreadPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tokenId, threadId } = useParams<{ tokenId: string; threadId: string }>();

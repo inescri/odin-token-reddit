@@ -22,8 +22,8 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
   };
 }
 
-export function testApp(prisma: PrismaClient) {
-  return createApp({ env: testEnv(), prisma, logger: pino({ level: 'silent' }), replayGuard: new ReplayGuard(), rateLimit: false });
+export function testApp(prisma: PrismaClient, envOverrides: Partial<Env> = {}) {
+  return createApp({ env: testEnv(envOverrides), prisma, logger: pino({ level: 'silent' }), replayGuard: new ReplayGuard(), rateLimit: false });
 }
 
 /** Route tests that need MySQL skip when no TEST_DATABASE_URL is configured. */

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ui } from './ui';
 
-export function Pager({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }) {
+export function Pager({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }): React.JSX.Element | null {
   const { t } = useTranslation();
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (pages <= 1) return null;

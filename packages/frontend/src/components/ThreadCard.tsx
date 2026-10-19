@@ -11,7 +11,7 @@ export function applyOutcomeToThread(t: ThreadView, o: VoteOutcome): ThreadView 
   return { ...t, score: o.score, upCount: o.upCount, downCount: o.downCount, myVote: o.myVote };
 }
 
-export function ThreadCard({ thread, onChange, onVoted }: { thread: ThreadView; onChange: (t: ThreadView) => void; onVoted?: () => void }) {
+export function ThreadCard({ thread, onChange, onVoted }: { thread: ThreadView; onChange: (t: ThreadView) => void; onVoted?: () => void }): React.JSX.Element {
   const { t } = useTranslation();
   const href = `/b/${encodeURIComponent(thread.tokenId)}/t/${thread.id}`;
   return (

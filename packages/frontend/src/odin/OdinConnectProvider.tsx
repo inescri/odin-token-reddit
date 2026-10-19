@@ -38,7 +38,7 @@ function connectError(
  * the SDK's state store (`useOdinState`) — it never awaits `connect()`, so the
  * same code works when a wallet in-app browser redirects to Odin and reloads.
  */
-export function OdinConnectProvider({ children }: { children: ReactNode }) {
+export function OdinConnectProvider({ children }: { children: ReactNode }): React.JSX.Element {
     const { t, i18n } = useTranslation();
     const state = useOdinState();
     const { user, request } = state;

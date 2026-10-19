@@ -18,7 +18,7 @@ const router = createBrowserRouter([
   },
 ]);
 
-export function App() {
+export function App(): React.JSX.Element {
   return (
     <SessionProvider>
       <RouterProvider router={router} />

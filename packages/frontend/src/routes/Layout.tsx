@@ -5,7 +5,7 @@ import { AuthBar } from '../components/AuthBar';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useSession } from '../hooks/useSession';
 
-export function Layout() {
+export function Layout(): React.JSX.Element {
   const { t } = useTranslation();
   const session = useSession();
   return (

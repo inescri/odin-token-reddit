@@ -43,12 +43,16 @@ export class VotesService {
     const outcome = await this.prisma.$transaction(async (tx) => {
       const row = await this.lockTarget(tx, target);
       if (!row) throw new AppError('NOT_FOUND', `${target.kind} not found`);
-      if (Boolean(Number(row.deleted))) throw new AppError('DELETED', `${target.kind} was deleted`);
 
       const existing = await tx.vote.findUnique({
         where: { voter_targetKind_targetId: { voter: principal, targetKind, targetId: target.id } },
       });
       const prev: StoredVote | null = existing ? { direction: existing.direction, weight: decimalToBigint(existing.weight) } : null;
+
+      // Deleted targets take no new weight, but a voter can still retract, so
+      // their stored weight never stays stuck in the score.
+      const isRetract = prev !== null && prev.direction === dir;
+      if (Boolean(Number(row.deleted)) && !isRetract) throw new AppError('DELETED', `${target.kind} was deleted`);
 
       const result = applyVoteDelta(
         { score: decimalToBigint(row.score), upCount: row.upCount, downCount: row.downCount },
@@ -106,7 +110,10 @@ export class VotesService {
     };
   }
 
-  /** `SELECT ... FOR UPDATE` on the target, joined to its board's tokenId. */
+  /**
+   * `SELECT ... FOR UPDATE` on the target, joined to its board's tokenId. A
+   * comment counts as deleted when its thread is.
+   */
   private async lockTarget(tx: Prisma.TransactionClient, target: VoteTarget): Promise<LockedRow | null> {
     const rows =
       target.kind === 'thread'
@@ -114,7 +121,7 @@ export class VotesService {
             SELECT t.id, t.tokenId, t.deleted, t.score, t.upCount, t.downCount
             FROM \`Thread\` t WHERE t.id = ${target.id} FOR UPDATE`)
         : await tx.$queryRaw<LockedRow[]>(Prisma.sql`
-            SELECT c.id, t.tokenId, c.deleted, c.score, c.upCount, c.downCount
+            SELECT c.id, t.tokenId, (c.deleted OR t.deleted) AS deleted, c.score, c.upCount, c.downCount
             FROM \`Comment\` c JOIN \`Thread\` t ON t.id = c.threadId
             WHERE c.id = ${target.id} FOR UPDATE`);
     const row = rows[0];

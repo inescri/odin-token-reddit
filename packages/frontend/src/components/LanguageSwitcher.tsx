@@ -17,7 +17,7 @@ const style: React.CSSProperties = {
  * re-renders every translated string and (via the language detector's
  * localStorage cache) persists the choice across reloads.
  */
-export function LanguageSwitcher() {
+export function LanguageSwitcher(): React.JSX.Element {
     const { t, i18n } = useTranslation();
 
     return (

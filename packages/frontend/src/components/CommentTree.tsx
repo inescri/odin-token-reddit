@@ -25,7 +25,7 @@ export function applyOutcomeToComment(c: CommentView, o: VoteOutcome): CommentVi
   return { ...c, score: o.score, upCount: o.upCount, downCount: o.downCount, myVote: o.myVote };
 }
 
-export function CommentTree(props: CommentTreeProps) {
+export function CommentTree(props: CommentTreeProps): React.JSX.Element {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
       {props.nodes.map((node) => (

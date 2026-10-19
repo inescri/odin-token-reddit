@@ -37,7 +37,7 @@ const counter = (len: number, max: number): React.CSSProperties => ({
   textAlign: 'right',
 });
 
-export function Composer(props: ComposerProps) {
+export function Composer(props: ComposerProps): React.JSX.Element {
   const { t } = useTranslation();
   const { status, connect } = useOdinConnect();
   const [title, setTitle] = useState(props.initialTitle ?? '');

@@ -5,7 +5,7 @@ import { formatCompactAmount } from '../lib/amounts';
 import { useOdinConnect } from '../odin/useOdinConnect';
 import { ui } from './ui';
 
-export function VotingPower({ power, ticker, exponent }: { power: VotingPowerState; ticker: string; exponent: number }) {
+export function VotingPower({ power, ticker, exponent }: { power: VotingPowerState; ticker: string; exponent: number }): React.JSX.Element | null {
   const { t } = useTranslation();
   const { status } = useOdinConnect();
   if (status !== 'connected') return null;

@@ -40,12 +40,20 @@ describe.skipIf(!hasDatabase)('ranking (MySQL)', () => {
     expect(await titles('new')).toEqual(['new-zero', 'fresh-mid', 'neg', 'mid-mid', 'old-high']);
   });
   it('hot decays old scores: fresh-mid beats old-high; order matches the formula', async () => {
-    const hot = (score: number, age: number) => score / Math.pow(age + 2, 1.5);
+    const hot = (score: number, age: number) => (score >= 0 ? score / Math.pow(age + 2, 1.5) : score * Math.pow(age + 2, 1.5));
     const expected = [
       ['old-high', hot(1000, 48)], ['fresh-mid', hot(100, 1)], ['mid-mid', hot(300, 12)], ['new-zero', hot(0, 0.1)], ['neg', hot(-50, 2)],
     ].sort((a, b) => (b[1] as number) - (a[1] as number)).map((x) => x[0]);
     expect(await titles('hot')).toEqual(expected);
     expect((await titles('hot')).indexOf('fresh-mid')).toBeLessThan((await titles('hot')).indexOf('old-high'));
+  });
+  it('hot sinks older negative threads below newer ones', async () => {
+    await prisma.thread.create({
+      data: { tokenId: 'tok', author: ALICE, title: 'old-neg', body: '', createdAt: hours(100), score: new Prisma.Decimal(-50).mul(new Prisma.Decimal(10).pow(3)) },
+    });
+    const hot = await titles('hot');
+    expect(hot.indexOf('neg')).toBeLessThan(hot.indexOf('old-neg'));
+    expect(hot.at(-1)).toBe('old-neg');
   });
   it('comments: top then new', async () => {
     const t = await prisma.thread.findFirstOrThrow({ where: { title: 'fresh-mid' } });

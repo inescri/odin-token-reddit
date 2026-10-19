@@ -33,7 +33,7 @@ const arrow = (active: boolean, disabled: boolean, color: string): React.CSSProp
   opacity: disabled ? 0.5 : 1,
 });
 
-export function VoteControl(props: VoteControlProps) {
+export function VoteControl(props: VoteControlProps): React.JSX.Element {
   const { t } = useTranslation();
   const meta = useTokenMeta();
   const { connect } = useOdinConnect();

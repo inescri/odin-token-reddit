@@ -61,9 +61,13 @@ export class CommentsService {
     if (!c) throw new AppError('NOT_FOUND', 'comment not found');
     if (c.author !== principal) throw new AppError('FORBIDDEN', 'only the author can delete this comment');
     if (c.deleted) return;
-    await this.prisma.$transaction([
-      this.prisma.comment.update({ where: { id }, data: { deleted: true, body: '' } }),
-      this.prisma.thread.update({ where: { id: c.threadId }, data: { commentCount: { decrement: 1 } } }),
-    ]);
+    await this.prisma.$transaction(async (tx) => {
+      // Conditional on `deleted: false` so only one of several concurrent
+      // deletes flips the row and decrements the count.
+      const { count } = await tx.comment.updateMany({ where: { id, deleted: false }, data: { deleted: true, body: '' } });
+      if (count === 1) {
+        await tx.thread.update({ where: { id: c.threadId }, data: { commentCount: { decrement: 1 } } });
+      }
+    });
   }
 }
