@@ -72,12 +72,13 @@ export function VoteControl(props: VoteControlProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: props.compact ? 56 : 72, flexShrink: 0 }}>
       <button type="button" aria-label={t('vote.up')} aria-pressed={props.myVote === 'up'} disabled={disabled} style={arrow(props.myVote === 'up', disabled, '#f7931a')} onClick={() => void cast('up')}>▲</button>
-      <strong title={t('vote.scoreTitle')} style={{ fontSize: props.compact ? '0.9rem' : '1rem', fontVariantNumeric: 'tabular-nums' }}>
-        {formatSignedAmount(props.score, exponent)}
+      <strong title={`${t('vote.scoreTitle')}: ${formatSignedAmount(props.score, exponent)}`} style={{ fontSize: props.compact ? '0.9rem' : '1rem', fontVariantNumeric: 'tabular-nums' }}>
+        {formatSignedAmount(props.score, exponent, { abbreviate: true })}
       </strong>
       <button type="button" aria-label={t('vote.down')} aria-pressed={props.myVote === 'down'} disabled={disabled} style={arrow(props.myVote === 'down', disabled, '#3867d6')} onClick={() => void cast('down')}>▼</button>
       <span style={{ ...ui.muted, fontSize: '0.75rem', whiteSpace: 'nowrap' }} title={t('vote.rawTitle')}>
-        {props.upCount}↑ {props.downCount}↓
+        {formatCompactAmount(BigInt(props.upCount), 0, { abbreviate: true })}↑{' '}
+        {formatCompactAmount(BigInt(props.downCount), 0, { abbreviate: true })}↓
       </span>
       {voting.needsSignIn ? <span style={{ ...ui.muted, fontSize: '0.7rem', textAlign: 'center' }}>{t('vote.signIn')}</span> : null}
       {message ? (

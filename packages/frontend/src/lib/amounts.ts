@@ -22,6 +22,24 @@ export function displayExponent(token: { divisibility: number; decimals: number 
 export interface CompactOptions {
   /** Fraction digits to keep for small values (default 3). */
   maxFractionDigits?: number;
+  /** Abbreviate values ≥ 1,000 as K/M/B/T with one truncated decimal (1.2K). */
+  abbreviate?: boolean;
+}
+
+const SUFFIXES = ['K', 'M', 'B', 'T'] as const;
+
+/**
+ * `whole` (≥ 1,000, non-negative display units) as e.g. `1.2K`, `20K`, `1,234T`.
+ * Truncates rather than rounds so a score is never overstated and 999,999
+ * never becomes `1000K`.
+ */
+function abbreviateWhole(whole: bigint): string {
+  let tier = 0;
+  while (tier < SUFFIXES.length && whole >= 1000n ** BigInt(tier + 1)) tier++;
+  const scaled10 = (whole * 10n) / 1000n ** BigInt(tier);
+  const intPart = (scaled10 / 10n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const decimal = scaled10 % 10n;
+  return `${intPart}${decimal === 0n ? '' : `.${decimal}`}${SUFFIXES[tier - 1]}`;
 }
 
 /**
@@ -35,6 +53,9 @@ export function formatCompactAmount(raw: bigint, exponent: number, opts: Compact
   const full = formatTokenAmount(raw, exponent);
   const negative = full.startsWith('-');
   const [wholeStr, fracStr = ''] = (negative ? full.slice(1) : full).split('.');
+  if (opts.abbreviate && BigInt(wholeStr!) >= 1000n) {
+    return `${negative ? '-' : ''}${abbreviateWhole(BigInt(wholeStr!))}`;
+  }
   const wholeGrouped = wholeStr!.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const frac = fracStr.slice(0, digits).replace(/0+$/, '');
   if (wholeStr === '0' && frac === '') {
