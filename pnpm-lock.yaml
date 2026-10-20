@@ -1789,7 +1789,7 @@ packages:
     engines: {node: '>= 0.4'}
 
   odin-auth-verify@file:packages/api/vendor/odin-auth-verify-0.0.0.tgz:
-    resolution: {integrity: sha512-Bj8WSinbMvQ8ws8kDVNjto3S7nSErdVATYwU3A14LlORc2vLvzZizIHnq1HiHxiywRddmPGVh3NtLZQBJ/2x2g==, tarball: file:packages/api/vendor/odin-auth-verify-0.0.0.tgz}
+    resolution: {integrity: sha512-+aRDU6T3U8S0B1uce/gFmYW5Zg7jHu6P9c30hlKEmY9sYiOaIXpbXXUIiSC8ETWlvfO6z1rc+QgOpVZM43krZQ==, tarball: file:packages/api/vendor/odin-auth-verify-0.0.0.tgz}
     version: 0.0.0
     engines: {node: '>=22'}
     peerDependencies:
