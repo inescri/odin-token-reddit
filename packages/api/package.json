@@ -16,22 +16,23 @@
     "prisma:deploy": "prisma migrate deploy"
   },
   "dependencies": {
-    "@dfinity/agent": "^3.4.3",
-    "@dfinity/identity": "^3.4.3",
-    "@dfinity/principal": "^3.4.3",
     "@icp-sdk/core": "^6.1.0",
-    "@noble/curves": "^1.6.0",
     "@prisma/client": "5.22.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
     "jose": "^6.0.0",
-    "odin-connect": "^2.0.2",
+    "odin-auth-verify": "file:vendor/odin-auth-verify-0.0.0.tgz",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@dfinity/agent": "^3.4.3",
+    "@dfinity/identity": "^3.4.3",
+    "@dfinity/principal": "^3.4.3",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",

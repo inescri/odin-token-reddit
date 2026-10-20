@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import type { ReplayGuard } from 'odin-auth-verify';
 import { z } from 'zod';
 
 import { verifyLogin } from '../auth/login.js';
-import type { ReplayGuard } from '../auth/replay-guard.js';
 import { requireAuth } from '../auth/require-auth.js';
 import { issueSession } from '../auth/session.js';
 
@@ -31,10 +31,10 @@ export function authRouter(deps: AuthRouterDeps): Router {
 
   router.post('/auth/login', ...(limiter ? [limiter] : []), async (req, res) => {
     const body = loginBody.parse(req.body);
-    const { principal, replayKey } = await verifyLogin(body, { appCanisterId: deps.appCanisterId });
-    // Only burn the key once the login proved valid, so a forged attempt cannot
-    // pre-poison a legitimate login's key.
-    deps.replayGuard.assertFresh(replayKey);
+    const { principal } = await verifyLogin(body, {
+      appCanisterId: deps.appCanisterId,
+      replayGuard: deps.replayGuard,
+    });
     const session = await issueSession(principal, deps.sessionSecret);
     res.json({ token: session.token, principal, expiresAt: session.expiresAt.toISOString() });
   });

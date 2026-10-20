@@ -29,9 +29,11 @@ MySQL 8 · React 19 + Vite 8 · odin-connect 2.x · Azle 0.33 (canister).
 
 - **Identity** is verified by the backend: the browser signs an app-bound
   timestamp with its Odin Connect delegation; `packages/api/src/auth/login.ts`
-  verifies the chain (code copied from odin-api), requires the delegation to
-  target `APP_CANISTER_ID`, and issues a 24 h app session. The canister exists
-  only so Odin issues that delegation; nothing calls it.
+  calls `verifyOdinLogin` from `odin-auth-verify` (the verifiers extracted from
+  odin-api), which checks the chain, requires the delegation to target
+  `APP_CANISTER_ID`, and guards against replay; the API then issues a 24 h app
+  session. The canister exists only so Odin issues that delegation; nothing
+  calls it.
 - **Vote weight is the Odin API balance as fetched by the browser through
   `odin.api.getBalance` and submitted with the vote. The backend trusts it**
   (owner decision, spec FR-014). The Odin API currently blocks non-browser
@@ -49,9 +51,11 @@ MySQL 8 · React 19 + Vite 8 · odin-connect 2.x · Azle 0.33 (canister).
 
 ## What you MAY NOT change without maintainer sign-off
 
-- The login verification steps in `packages/api/src/auth/login.ts` (target
-  check, message prefix, timestamp window, replay guard)
-- The copied verifier modules `packages/api/src/auth/verify-*.ts`
+- The login verification in `packages/api/src/auth/login.ts`: the
+  `verifyOdinLogin` options (`appCanisterId`, message prefix, timestamp window,
+  replay guard) and the `odin-auth-verify` dependency itself. Fix verifier bugs
+  in the odin-auth-verify repo, not here. Until it is on npm, the API installs
+  it from `packages/api/vendor/odin-auth-verify-*.tgz` (built with `npm pack`).
 - The vote transaction's row lock in `packages/api/src/services/votes.service.ts`
 - The canister's role (it must stay logic-free) and stable memory id 0 (reserved)
 
