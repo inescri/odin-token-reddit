@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// One board per Odin token. `divisibility` and `decimals` are display-only
+/// metadata supplied by the client from `odin.api.getToken`; the backend uses
+/// `decimals` solely for Hot ranking.
+model Board {
+  tokenId      String   @id @db.VarChar(64)
+  divisibility Int
+  decimals     Int
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+  threads      Thread[]
+}
+
+model Thread {
+  id           BigInt    @id @default(autoincrement())
+  tokenId      String    @db.VarChar(64)
+  board        Board     @relation(fields: [tokenId], references: [tokenId])
+  author       String    @db.VarChar(63)
+  title        String    @db.VarChar(200)
+  body         String    @db.Text
+  createdAt    DateTime  @default(now()) @db.DateTime(3)
+  editedAt     DateTime? @db.DateTime(3)
+  deleted      Boolean   @default(false)
+  /// Sum of up weights minus sum of down weights, raw token units. May be negative.
+  /// DECIMAL(65,0), wider than a single 40-digit weight, so no run of votes can overflow it.
+  score        Decimal   @default(0) @db.Decimal(65, 0)
+  upCount      Int       @default(0) @db.UnsignedInt
+  downCount    Int       @default(0) @db.UnsignedInt
+  commentCount Int       @default(0) @db.UnsignedInt
+  comments     Comment[]
+
+  @@index([tokenId, createdAt(sort: Desc)])
+  @@index([tokenId, score(sort: Desc), createdAt(sort: Desc)])
+}
+
+model Comment {
+  id        BigInt    @id @default(autoincrement())
+  threadId  BigInt
+  thread    Thread    @relation(fields: [threadId], references: [id])
+  parentId  BigInt?
+  author    String    @db.VarChar(63)
+  body      String    @db.Text
+  createdAt DateTime  @default(now()) @db.DateTime(3)
+  editedAt  DateTime? @db.DateTime(3)
+  deleted   Boolean   @default(false)
+  score     Decimal   @default(0) @db.Decimal(65, 0)
+  upCount   Int       @default(0) @db.UnsignedInt
+  downCount Int       @default(0) @db.UnsignedInt
+
+  @@index([threadId])
+}
+
+enum TargetKind {
+  THREAD
+  COMMENT
+}
+
+enum Direction {
+  UP
+  DOWN
+}
+
+/// At most one vote per (voter, target). `weight` is frozen at cast time and
+/// never updated in place; a flip writes a new row over the same key.
+model Vote {
+  voter      String     @db.VarChar(63)
+  targetKind TargetKind
+  targetId   BigInt
+  direction  Direction
+  weight     Decimal    @db.Decimal(40, 0)
+  castAt     DateTime   @default(now()) @db.DateTime(3)
+
+  @@id([voter, targetKind, targetId])
+  @@index([targetKind, targetId])
+}
+
+model PostCooldown {
+  principal  String   @id @db.VarChar(63)
+  lastPostAt DateTime @db.DateTime(3)
+}

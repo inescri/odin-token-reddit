@@ -85,7 +85,7 @@ const styles: Record<string, React.CSSProperties> = {
  * an error, with the error shown), and the connected identity + Disconnect once
  * authenticated.
  */
-export function AuthBar() {
+export function AuthBar(): React.JSX.Element {
     const { t } = useTranslation();
     const { status, principal, profile, user, error, connect, disconnect } =
         useOdinConnect();

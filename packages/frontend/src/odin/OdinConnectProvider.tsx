@@ -9,7 +9,7 @@ import { odin } from './client';
 import { OdinConnectContext } from './context';
 import { deriveAuthStatus } from './authStatus';
 import { useOdinState } from './useOdinState';
-import { APP_CANISTER_ID } from '../canister/config';
+import { APP_CANISTER_ID } from '../config';
 
 /** User-facing message for a connect that did not succeed, else null. */
 function connectError(
@@ -38,7 +38,7 @@ function connectError(
  * the SDK's state store (`useOdinState`) — it never awaits `connect()`, so the
  * same code works when a wallet in-app browser redirects to Odin and reloads.
  */
-export function OdinConnectProvider({ children }: { children: ReactNode }) {
+export function OdinConnectProvider({ children }: { children: ReactNode }): React.JSX.Element {
     const { t, i18n } = useTranslation();
     const state = useOdinState();
     const { user, request } = state;

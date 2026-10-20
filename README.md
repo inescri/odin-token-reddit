@@ -1,307 +1,146 @@
-# odin-app-template
+# odin-token-reddit
 
-Reference canister app template for building on **Odin Fun**. Fork it, deploy it, and you have a working app with Odin Connect auth, deposit/withdraw flows, and an internal multi-token ledger.
+A token-weighted message board for [Odin Fun](https://odin.fun). Every Odin
+token gets a board. Anyone signed in with Odin can post threads and comments.
+Votes are weighted by how much of the board's token the voter holds at that
+moment. Nothing ever leaves anyone's wallet.
 
-## Stack
-
-- **Canister**: [Azle](https://github.com/demergent-labs/azle) (TypeScript, Internet Computer)
-- **Frontend**: React + TypeScript + Vite, [odin-connect](https://www.npmjs.com/package/odin-connect) SDK (2.x, state store — see [Odin Connect in the frontend](#odin-connect-in-the-frontend))
-- **Tooling**: dfx, pnpm workspace
-
-## Architecture
+## How it works
 
 ```mermaid
 flowchart LR
     user([User])
     fe["Frontend<br/>(React + Vite)"]
-    oc["odin-connect SDK"]
-    popup["Odin Fun<br/>approval (popup or redirect)"]
-    can["App canister<br/>(Azle)"]
-    ledger[("Internal ledger<br/>StableBTreeMap<br/>(owner|tokenId) → balance")]
-    odin["Odin ledger<br/>(one multiplexed ICRC ledger)"]
+    sdk["odin-connect SDK"]
+    odinfe["Odin Fun<br/>sign-in (popup / redirect)"]
+    odinapi["Odin API<br/>tokens · profiles · balances"]
+    api["Backend<br/>(Express + Prisma)"]
+    db[("MySQL")]
+    can["Identity-anchor<br/>canister"]
 
     user --> fe
-    fe --> oc
-    oc --> popup
-    popup -->|icrc2_approve| odin
-    fe -->|"deposit / withdraw / getBalances"| can
-    can --> ledger
-    can -->|"icrc2_transfer_from (deposit + withdraw fee)<br/>icrc1_transfer (withdraw)"| odin
+    fe --> sdk
+    sdk -->|connect, requires_delegation<br/>targets=[canister]| odinfe
+    odinfe -.->|icrc28_trusted_origins| can
+    sdk -->|getTokens / getUser / getBalance| odinapi
+    fe -->|"POST /auth/login (signed timestamp + delegation)"| api
+    fe -->|"threads · comments · POST /votes {weight}"| api
+    api --> db
 ```
 
-**Deposit**: the user approves the app canister as an ICRC-2 spender through the
-Odin Fun approval page (a popup, or a full-page redirect in wallet in-app
-browsers); once the approval's result is in the odin-connect state, the canister then pulls the approved funds itself
-(`icrc2_transfer_from` on the Odin ledger) and credits the user's internal
-balance. It is permissionless and self-verifying — a credit is only recorded for
-funds that actually settled into the canister.
+1. **Sign in.** The frontend calls `odin.connect({ requires_delegation: true, targets: [APP_CANISTER_ID] })`.
+   Odin issues a 48 h delegation scoped to the identity-anchor canister. The
+   canister has no logic; it exists because Odin needs a target and publishes
+   the trusted origins.
+2. **App session.** The browser signs `"odin-token-reddit-login:v1\n" + timestamp`
+   with the delegation's session key and posts it with the delegation chain.
+   The backend verifies the chain (the same verifier code Odin's own login
+   uses), checks the delegation targets this app, and issues a 24 h session.
+3. **Vote.** Right before voting, the browser reads the user's balance of the
+   board's token through `odin.api.getBalance` and submits it as the vote's
+   weight. The backend records it as submitted. The weight is frozen on the
+   vote; later buys or sells do not change past votes. Retracting a vote uses
+   the stored weight, so a holder who sold everything can still undo exactly
+   what they added.
 
-**Withdraw**: the user calls `withdraw`; the canister debits the internal
-balance (persisted *before* the transfer await), pulls the BTC ledger fee from
-the withdrawer (`icrc2_transfer_from`, see [Withdrawal fees](#withdrawal-fees)),
-then sends the tokens back out on the Odin ledger (`icrc1_transfer`), refunding
-the debit on failure.
+### Trust model
 
-## Odin Connect in the frontend
+The vote weight is **client-submitted and trusted**. This is a deliberate v1
+decision: the Odin API blocks non-browser clients, so the backend cannot fetch
+balances itself until its egress is allowed through Cloudflare. The hardening
+path is a one-function swap in `packages/api/src/services/votes.service.ts`.
+Every accepted vote is logged with principal, token, and weight so votes can
+be reconciled against the API later.
 
-The frontend uses [odin-connect](https://www.npmjs.com/package/odin-connect)
-**2.x**, which delivers every result — a connect, an ICRC-2 approval, a buy —
-through **one state store** instead of only through the promise returned by the
-call. That is what makes the app work inside wallet in-app browsers (OKX,
-Xverse, …): there the SDK's default `mode: "auto"` navigates the tab to Odin
-and back, the page reloads, and an awaited promise from before the reload never
-returns. In normal browsers it uses popups; the app code is the same.
+Identity, by contrast, **is** verified cryptographically. A delegation issued
+to another Odin app cannot log in here (target check + app-bound message).
 
-The pattern, as wired in this template:
+## Packages
 
-1. **One instance per page load**, created at module level:
-   [`src/odin/client.ts`](packages/frontend/src/odin/client.ts). Never one per
-   render or per route.
-2. **Render from state** with `useSyncExternalStore(odin.subscribe,
-   odin.getState, odin.getServerState)`:
-   [`src/odin/useOdinState.ts`](packages/frontend/src/odin/useOdinState.ts).
-   `state` is `{ status, user, request }`; `status` is `"initializing"` until
-   the stored session (and any returning redirect result) has been applied.
-   [`OdinConnectProvider`](packages/frontend/src/odin/OdinConnectProvider.tsx)
-   derives the UI's auth status from it
-   ([`authStatus.ts`](packages/frontend/src/odin/authStatus.ts)) — there is no
-   `restoreSession()` call.
-3. **Start things from buttons, don't await them.** `odin.connect(…)` and
-   `user.icrcApprove(…)` are fire-and-forget; their outcome arrives as
-   `state.request` (`{ id, action, status, input, returnState?, error? }`,
-   `status` one of `pending | success | rejected | failed | unverified`).
-4. **React to `request` for the follow-up step.**
-   [`DepositForm`](packages/frontend/src/components/DepositForm.tsx) and
-   [`WithdrawForm`](packages/frontend/src/components/WithdrawForm.tsx) each have
-   an effect that, when *their* `icrc_approve` request is `success`, calls the
-   canister (`deposit` / `withdraw`). Rules they follow
-   ([`approvalFlow.ts`](packages/frontend/src/odin/approvalFlow.ts)):
-   - read call arguments from `request.input`, not from form state (gone after
-     a redirect); put anything else the next step needs in `returnState`
-     (JSON, bigints allowed) — withdraw carries the token + amount there, since
-     its approval is for the BTC fee;
-   - tag each flow's `returnState` (`{ flow: 'deposit' }`) so two flows that
-     start the same action don't both react;
-   - run a value-moving follow-up **at most once per `request.id`** (claimed
-     before the call), because effects re-run and a settled request stays in
-     state;
-   - never treat `success` as proof: the canister's `icrc2_transfer_from` is the
-     on-chain check of the allowance;
-   - never call `connect()` automatically after a `rejected` / `unverified`
-     connect — in redirect mode that loops the user back to Odin; show the
-     Connect button (retry) instead.
-
-Consequences for your fork:
-
-- Code that reads `location.search` on load must read it after
-  `await odin.ready()` (Odin returns to the page path without the query; the
-  SDK restores it). The template's only such reader, `?lang=`, is consumed and
-  stripped before any connect can start, so it is unaffected.
-- If you add a Content-Security-Policy, `connect-src` must allow
-  `https://api.odin.fun` — every connect is verified there.
-- Do not add open-redirect pages (`/go?to=…`, `/redirect/<url>`) on your
-  origin: redirect mode with `requires_api` / `requires_delegation` relies on
-  Odin only returning to your own pages.
-- To test the redirect path in a desktop browser, run `odin.mode = "redirect"`
-  in the console (or construct with `mode: "redirect"` temporarily). Use
-  `https://` or `http://localhost`.
-
-Upgrading an older fork (odin-connect 1.6/1.7)? Follow the SDK's
-[migration guide](https://github.com/Toniq-Labs/odin-connect/blob/main/MIGRATION-2.0.md)
-(shipped in the package as `node_modules/odin-connect/MIGRATION-2.0.md`) and the
-[readme](https://github.com/Toniq-Labs/odin-connect#readme) ("State and
-sessions", "Wallet in-app browsers").
-
-## Layout
-
-```
-packages/
-  canister/   # Azle canister — internal multi-token ledger
-  frontend/   # Vite + React app — Odin Connect auth + deposit/withdraw UI
-dfx.json      # canister (azle) + frontend (asset) canister config
-```
-
-## Prerequisites
-
-- [Node.js](https://nodejs.org) 22+ (see `.nvmrc`)
-- [pnpm](https://pnpm.io) 10+
-- [dfx](https://internetcomputer.org/docs/current/developer-docs/getting-started/install) 0.31+
-- [Rust](https://www.rust-lang.org/tools/install) + `wasm32-unknown-unknown` target (required by Azle)
-
-```sh
-rustup target add wasm32-unknown-unknown
-```
+| Package | What |
+|---|---|
+| `packages/api` | Express 5 + Prisma 5 + MySQL 8. Boards, threads, comments, votes, login. |
+| `packages/frontend` | React 19 + Vite 8 + odin-connect 2.x. Board UI. |
+| `packages/canister` | Azle. Identity anchor: `icrc28_trusted_origins`, owner. Deploy once. |
 
 ## Quick start
 
-```sh
-pnpm install          # install workspace deps (auto-installs the azle dfx extension if dfx is on PATH)
-dfx start --clean --background
-dfx deploy            # build + deploy canister and frontend
-```
-
-> If `pnpm install` ran before `dfx` was installed, register the azle dfx extension manually:
->
-> ```sh
-> pnpm --filter @odin-app/canister exec azle extension install
-> ```
-
-Frontend dev server:
+Prerequisites: Node 22, pnpm, Docker (for MySQL). dfx only if you deploy the canister.
 
 ```sh
-pnpm dev:frontend
+pnpm install
+docker compose up -d mysql
+
+cp packages/api/.env.example packages/api/.env
+#   SESSION_SECRET: 32+ random chars; APP_CANISTER_ID: your anchor canister id
+cp packages/frontend/.env.example packages/frontend/.env
+#   VITE_APP_CANISTER_ID: same id; VITE_ODIN_ENV: prod | dev
+
+pnpm --filter @odin-app/api prisma:migrate
+pnpm dev:api        # http://localhost:3000
+pnpm dev:frontend   # http://localhost:5173
 ```
+
+### Deploying the identity-anchor canister
+
+Odin's signer must be able to reach the canister, so it lives on the IC, not a
+local replica. Edit `TRUSTED_ORIGINS` in `packages/canister/src/index.ts` to
+list your frontend origins exactly (`http://localhost:5173` for dev, your
+production origin for prod), then:
+
+```sh
+dfx deploy --network ic canister
+```
+
+Put the resulting id in both `.env` files. You only need to do this once per
+set of origins.
+
+## Backend API
+
+See `specs/001-token-message-board/contracts/backend-api.md`. In short:
+
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/auth/login` | — |
+| GET | `/auth/me` | session |
+| GET | `/boards/stats?tokenIds=a,b` | — |
+| GET | `/boards/:tokenId/threads?sort=top\|new\|hot&page&limit` | optional |
+| POST | `/boards/:tokenId/threads` | session |
+| GET / PATCH / DELETE | `/threads/:id` | optional / author |
+| GET / POST | `/threads/:id/comments` | optional / session |
+| PATCH / DELETE | `/comments/:id` | author |
+| POST | `/votes` | session |
+
+Big numbers are decimal strings on the wire. Errors are `{ error: { code, message } }`.
+
+## Environment variables
+
+**API** (`packages/api/.env`): `PORT`, `DATABASE_URL`, `TEST_DATABASE_URL`
+(tests), `SESSION_SECRET`, `APP_CANISTER_ID`, `CORS_ORIGINS`, `ODIN_ENV`,
+`POST_COOLDOWN_MS` (default 30000).
+
+**Frontend** (`packages/frontend/.env`): `VITE_ODIN_APP_NAME`, `VITE_ODIN_ENV`,
+`VITE_APP_CANISTER_ID`, `VITE_API_URL`.
 
 ## Scripts
 
-| Command                | Description                          |
-| ---------------------- | ------------------------------------ |
-| `pnpm build`           | Build all workspace packages         |
-| `pnpm build:canister`  | Build the Azle canister              |
-| `pnpm build:frontend`  | Build the frontend                   |
-| `pnpm dev:frontend`    | Start the Vite dev server            |
-| `pnpm typecheck`       | Type-check all packages              |
-| `pnpm test`            | Run unit tests (ledger)              |
+```sh
+pnpm typecheck     # all packages
+pnpm test          # api unit tests always; route tests when TEST_DATABASE_URL is set
+pnpm build         # frontend dist, api dist, canister wasm check (needs dfx)
+```
 
-## Canister API
+## Deploy
 
-| Endpoint        | Kind   | Description                                                        |
-| --------------- | ------ | ----------------------------------------------------------------- |
-| `deposit`       | update | Pull pre-approved funds from the Odin ledger and credit the caller. |
-| `withdraw`      | update | Debit the caller's balance and send tokens back via the Odin ledger. |
-| `getBalance`    | query  | Caller's internal balance for one token.                          |
-| `getBalances`   | query  | All of the caller's `(token, balance)` pairs.                     |
-| `getOwner`      | query  | The configured owner principal, or empty if not yet initialized.  |
-| `icrc28_trusted_origins` | update | [ICRC-28](https://github.com/dfinity/wg-identity-authentication) trusted origins — the web origins allowed to request signed calls. Odin Connect calls this before issuing a delegation and refuses auth if your app's origin is not listed. |
+- **Frontend**: any static host. Netlify works out of the box (`public/_redirects`
+  handles SPA routes). Set `VITE_API_URL` and `VITE_APP_CANISTER_ID` at build time.
+- **API**: any Node 22 host with a MySQL 8 database. Run
+  `prisma migrate deploy` on release. Set `CORS_ORIGINS` to the frontend origin.
+  The replay guard is in-memory; run one instance or move it to Redis/MySQL first.
+- **Canister**: once, see above.
 
-> **ICRC-28 / Odin Connect auth:** the trusted origins are configured in
-> `TRUSTED_ORIGINS` in
-> [`packages/canister/src/index.ts`](packages/canister/src/index.ts). Each entry
-> must be a bare origin (`scheme://host[:port]`, no trailing slash, no path);
-> https only, except `http://localhost` in dev. The signer does an exact string
-> match. **Edit this list to your deployed frontend origin before going live** —
-> a wrong or missing origin fails login silently. It must be `update` (not
-> `query`): the signer issues a replicated call so the response is certified.
+## Spec and plan
 
-Tokens are identified by their **Odin token id** (text), not an ICRC ledger
-principal — every Odin token shares one ledger and is addressed by subaccount
-(`odin_token_pointer`). Balances are keyed by `(owner, tokenId)` and stored in
-stable memory, so they survive upgrades.
-
-### Withdrawal fees
-
-transfer. On withdraw the sender is the app canister, so the canister pays that
-fee in BTC.
-
-This template makes the **withdrawer pay** the fee — no maintainer-funded float,
-not griefable. The flow:
-
-1. On withdraw the frontend requests an ICRC-2 BTC approval (`icrcApprove`,
-   token `"btc"`) for **2× the fee**.
-2. `withdraw` pulls the fee from the caller's BTC (`icrc2_transfer_from`), then
-   sends the tokens. The pulled BTC funds the outbound transfer's own fee, so on
-   success the canister **nets zero BTC and needs no float**. If the token send
-   fails after the fee pull, the fee is forfeited (not refunded — returning it
-   would cost another BTC transfer), leaving the canister a small BTC surplus.
-
-Why 2×: pulling BTC is itself a transfer, and the ledger charges the caller a
-fee on that pull too (debited from `from`, per ICRC-2). So the withdrawer pays
-the fee twice — once for the pull, once funding the send — and the approval must
-cover both. See `ODIN_BTC_FEE` in
-[`packages/canister/src/odin.ts`](packages/canister/src/odin.ts) and
-[`packages/frontend/src/lib/fees.ts`](packages/frontend/src/lib/fees.ts).
-
-> **Verify before mainnet:** `ODIN_BTC_FEE` is set to the documented 100 sats.
-> Confirm it matches the live ledger fee — too low traps the first withdraw with
-> `error 910`; too high leaves the canister a small BTC surplus.
-
-## Deploy to mainnet
-
-1. Make sure you have a cycles-funded identity (`dfx identity get-principal`,
-   then fund it with cycles — see the
-   [cycles docs](https://internetcomputer.org/docs/current/developer-docs/getting-started/cycles/cycles-wallet)).
-
-2. Build and deploy to the IC:
-
-   ```sh
-   pnpm build                       # frontend dist + canister type check
-   dfx deploy --network ic          # deploy canister + frontend asset canister
-   ```
-
-3. The deploying principal is recorded as the **owner** (see `@init` in
-   [`packages/canister/src/index.ts`](packages/canister/src/index.ts)) — a
-   generic admin handle for any admin-gated endpoints you add later. Deposits are
-   **not** owner-gated: `deposit` is permissionless and self-verifying (it pulls
-   the caller's own pre-approved funds before crediting), so no trusted minter is
-   needed.
-
-4. Note the canister IDs printed on deploy; the frontend reads them from the
-   generated `.env` (`output_env_file` in `dfx.json`).
-
-5. **Set your trusted origins.** Edit `TRUSTED_ORIGINS` in
-   [`packages/canister/src/index.ts`](packages/canister/src/index.ts) to the
-   origin your frontend is served from (e.g. your asset-canister URL or custom
-   domain), then redeploy. Odin Connect login fails until your origin is listed.
-   Verify with:
-
-   ```sh
-   dfx canister call canister icrc28_trusted_origins '()' --network ic
-   ```
-
-6. **No canister BTC float needed** for withdrawals — the withdrawer pays the
-   Odin ledger fee at withdraw time (see [Withdrawal fees](#withdrawal-fees)).
-   Just confirm `ODIN_BTC_FEE` matches the live ledger fee before going live.
-
-## How to extend
-
-**Add support for a new token** — no code change needed. Tokens are identified
-by their Odin token id (text); pass the id to `deposit` / `withdraw` /
-`getBalance`. The ledger keys every balance by `(owner, tokenId)`, so new tokens
-work out of the box.
-
-**Add a new canister endpoint** — add a `@query` / `@update` method in
-[`packages/canister/src/index.ts`](packages/canister/src/index.ts). ⚠️ Add code
-*around* the hardened ledger core, never inside the `BEGIN/END HARDENED LEDGER
-CORE` markers in
-[`packages/canister/src/ledger.ts`](packages/canister/src/ledger.ts). See
-[`CLAUDE.md`](CLAUDE.md) for the full guardrails.
-
-**Frontend changes** — UI, components, and styling under
-[`packages/frontend/src`](packages/frontend/src) are free to modify. Auth and
-flows are built on the [odin-connect](https://www.npmjs.com/package/odin-connect)
-SDK — render from its state, never from an awaited call (see
-[Odin Connect in the frontend](#odin-connect-in-the-frontend)).
-
-**Add a language (i18n)** — the frontend is localized with
-[react-i18next](https://react.i18next.com/). English (`en`) is the default and
-the source of truth for keys; Simplified Chinese (`zh`) ships alongside it.
-Locale detection is `?lang=` query param → `localStorage` → browser language →
-`en`, and the choice persists across reloads. To add a locale (e.g. Japanese,
-`ja`):
-
-1. Copy [`src/i18n/locales/en.json`](packages/frontend/src/i18n/locales/en.json)
-   to `src/i18n/locales/ja.json` and translate the values (keep the keys).
-2. In [`src/i18n/index.ts`](packages/frontend/src/i18n/index.ts): import the new
-   catalog, add it to `resources`, and add `'ja'` to `SUPPORTED_LOCALES`.
-3. Add a `language.ja` label to every locale catalog (the switcher labels each
-   option with `t('language.<locale>')`).
-
-`en.json` is the key source of truth: every other catalog is checked against it
-at compile time (a missing or misspelled key fails `pnpm typecheck`), so keep
-the key sets identical. The switcher in
-[`src/components/LanguageSwitcher.tsx`](packages/frontend/src/components/LanguageSwitcher.tsx)
-renders one option per `SUPPORTED_LOCALES` entry automatically.
-
-**Share a language via URL (`?lang=`)** — opening the app with `?lang=zh` (or
-`?lang=en`) applies that language as if the user had picked it in the switcher:
-it is persisted to `localStorage` and the param is stripped from the URL so a
-stale link can't override a later in-app choice. Regional variants map to their
-base language (`zh-CN` → `zh`); unsupported values are ignored. See
-[`src/i18n/locale.ts`](packages/frontend/src/i18n/locale.ts).
-
-**Language in the Odin Connect pages** — the app forwards its active locale to
-the [odin-connect](https://www.npmjs.com/package/odin-connect) SDK via its
-runtime `lang` setter, on mount and whenever the user switches language, so
-sign-in and canister-action pages (popup or redirect) open in the app's current
-language without a reload. See
-[`src/odin/OdinConnectProvider.tsx`](packages/frontend/src/odin/OdinConnectProvider.tsx).
+`specs/001-token-message-board/` holds the feature spec, implementation plan,
+research notes, data model, API contracts, quickstart validation scenarios, and
+the task list this repo was built from.

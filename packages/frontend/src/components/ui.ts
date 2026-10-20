@@ -1,0 +1,60 @@
+import type { CSSProperties } from 'react';
+
+/** Shared inline styles, matching AuthBar's look. */
+export const ui = {
+  card: {
+    border: '1px solid #e3e3e3',
+    borderRadius: 10,
+    padding: '0.75rem 1rem',
+    display: 'flex',
+    gap: '0.75rem',
+    alignItems: 'flex-start',
+    background: '#fff',
+  } as CSSProperties,
+  primary: {
+    padding: '0.45rem 0.9rem',
+    borderRadius: 8,
+    border: 'none',
+    background: '#f7931a',
+    color: '#fff',
+    fontWeight: 600,
+    cursor: 'pointer',
+  } as CSSProperties,
+  secondary: {
+    padding: '0.35rem 0.7rem',
+    borderRadius: 8,
+    border: '1px solid #ccc',
+    background: 'transparent',
+    color: 'inherit',
+    cursor: 'pointer',
+  } as CSSProperties,
+  link: {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    color: '#555',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    textDecoration: 'underline',
+  } as CSSProperties,
+  muted: { color: '#666', fontSize: '0.85rem' } as CSSProperties,
+  error: { color: '#c0392b', fontSize: '0.9rem' } as CSSProperties,
+  input: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '0.5rem',
+    borderRadius: 8,
+    border: '1px solid #ccc',
+    font: 'inherit',
+  } as CSSProperties,
+  tab: (active: boolean): CSSProperties => ({
+    padding: '0.35rem 0.8rem',
+    borderRadius: 999,
+    border: active ? '1px solid #f7931a' : '1px solid #ccc',
+    background: active ? '#fff4e6' : 'transparent',
+    color: 'inherit',
+    cursor: 'pointer',
+    fontWeight: active ? 600 : 400,
+  }),
+  disabled: { opacity: 0.5, cursor: 'not-allowed' } as CSSProperties,
+};
