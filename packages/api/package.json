@@ -22,7 +22,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
     "jose": "^6.0.0",
-    "odin-auth-verify": "file:vendor/odin-auth-verify-0.0.0.tgz",
+    "odin-auth-verify": "0.0.3",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
     "zod": "^3.24.0"

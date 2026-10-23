@@ -21,7 +21,6 @@ src/
   services/           # Prisma access; votes.service.ts owns the vote transaction
   routes/             # zod-validated HTTP surface (contracts/backend-api.md)
 prisma/schema.prisma  # Board, Thread, Comment, Vote, PostCooldown
-vendor/               # odin-auth-verify-*.tgz (npm pack) until it is on npm
 ```
 
 ## Hard rules
@@ -40,8 +39,8 @@ vendor/               # odin-auth-verify-*.tgz (npm pack) until it is on npm
 5. **Raw SQL only in `lib/ranking.ts` and the vote row lock.** Everything else
    goes through the Prisma client.
 6. **Delegation and signature verification lives in `odin-auth-verify`.** Fix
-   it there, then refresh `vendor/odin-auth-verify-*.tgz` with `npm pack` in
-   that repo and `pnpm install`. The replay guard is
+   it there, publish a release, then bump the exact version pinned in
+   `package.json`. The replay guard is
    `createMemoryReplayGuard()` (in-memory, single instance only).
 7. **Login must keep the target check** (`targets` includes
    `APP_CANISTER_ID`) and the app-bound message prefix. Dropping either lets a
