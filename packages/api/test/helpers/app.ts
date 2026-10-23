@@ -1,8 +1,8 @@
+import { createMemoryReplayGuard } from 'odin-auth-verify';
 import { pino } from 'pino';
 import type { PrismaClient } from '@prisma/client';
 
 import { createApp } from '../../src/app.js';
-import { ReplayGuard } from '../../src/auth/replay-guard.js';
 import type { Env } from '../../src/env.js';
 import { TEST_CANISTER_ID } from './odin-identity.js';
 
@@ -23,7 +23,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
 }
 
 export function testApp(prisma: PrismaClient, envOverrides: Partial<Env> = {}) {
-  return createApp({ env: testEnv(envOverrides), prisma, logger: pino({ level: 'silent' }), replayGuard: new ReplayGuard(), rateLimit: false });
+  return createApp({ env: testEnv(envOverrides), prisma, logger: pino({ level: 'silent' }), replayGuard: createMemoryReplayGuard(), rateLimit: false });
 }
 
 /** Route tests that need MySQL skip when no TEST_DATABASE_URL is configured. */

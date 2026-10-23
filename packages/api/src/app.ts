@@ -1,10 +1,11 @@
 import cors from 'cors';
 import express from 'express';
 import { pinoHttp } from 'pino-http';
+import { createMemoryReplayGuard } from 'odin-auth-verify';
+import type { ReplayGuard } from 'odin-auth-verify';
 import type { Logger } from 'pino';
 import type { PrismaClient } from '@prisma/client';
 
-import { ReplayGuard } from './auth/replay-guard.js';
 import type { Env } from './env.js';
 import { errorHandler } from './lib/errors.js';
 import { authRouter } from './routes/auth.routes.js';
@@ -50,7 +51,9 @@ export function createApp(deps: AppDeps): express.Express {
     authRouter({
       sessionSecret: deps.env.SESSION_SECRET,
       appCanisterId: deps.env.APP_CANISTER_ID,
-      replayGuard: deps.replayGuard ?? new ReplayGuard(),
+      // In-memory: correct for a single API instance. Back ReplayGuard with
+      // MySQL or Redis before running several instances.
+      replayGuard: deps.replayGuard ?? createMemoryReplayGuard(),
       rateLimit: deps.rateLimit,
     }),
   );

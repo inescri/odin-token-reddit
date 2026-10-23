@@ -14,15 +14,14 @@ src/
   app.ts              # createApp(deps): middleware + routers; used by tests
   env.ts              # zod-validated process.env
   auth/
-    login.ts          # verifyLogin: chain + targets + timestamp + signature → principal
+    login.ts          # verifyLogin: wraps odin-auth-verify's verifyOdinLogin → principal
     session.ts        # app JWT (jose, HS256, 24 h)
     require-auth.ts   # requireAuth / optionalAuth → req.principal
-    replay-guard.ts   # in-memory signature burn (single instance)
-    verify-*.ts       # COPIED from odin-api; do not edit locally
   lib/                # pure, unit-tested: amounts, validation, vote-delta, ranking, errors
   services/           # Prisma access; votes.service.ts owns the vote transaction
   routes/             # zod-validated HTTP surface (contracts/backend-api.md)
 prisma/schema.prisma  # Board, Thread, Comment, Vote, PostCooldown
+vendor/               # odin-auth-verify-*.tgz (npm pack) until it is on npm
 ```
 
 ## Hard rules
@@ -40,8 +39,10 @@ prisma/schema.prisma  # Board, Thread, Comment, Vote, PostCooldown
    it is what makes concurrent toggles converge.
 5. **Raw SQL only in `lib/ranking.ts` and the vote row lock.** Everything else
    goes through the Prisma client.
-6. **Do not edit `auth/verify-*.ts`.** They are copied from odin-api; update by
-   re-copying.
+6. **Delegation and signature verification lives in `odin-auth-verify`.** Fix
+   it there, then refresh `vendor/odin-auth-verify-*.tgz` with `npm pack` in
+   that repo and `pnpm install`. The replay guard is
+   `createMemoryReplayGuard()` (in-memory, single instance only).
 7. **Login must keep the target check** (`targets` includes
    `APP_CANISTER_ID`) and the app-bound message prefix. Dropping either lets a
    delegation issued to another app log in here.
