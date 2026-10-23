@@ -54,8 +54,8 @@ MySQL 8 · React 19 + Vite 8 · odin-connect 2.x · Azle 0.33 (canister).
 - The login verification in `packages/api/src/auth/login.ts`: the
   `verifyOdinLogin` options (`appCanisterId`, message prefix, timestamp window,
   replay guard) and the `odin-auth-verify` dependency itself. Fix verifier bugs
-  in the odin-auth-verify repo, not here. Until it is on npm, the API installs
-  it from `packages/api/vendor/odin-auth-verify-*.tgz` (built with `npm pack`).
+  in the odin-auth-verify repo, not here. The API pins it to an exact npm
+  version; review the release before bumping it.
 - The vote transaction's row lock in `packages/api/src/services/votes.service.ts`
 - The canister's role (it must stay logic-free) and stable memory id 0 (reserved)
 
